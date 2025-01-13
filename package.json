@@ -1,0 +1,20 @@
+{
+  "name": "backendyoutube-clone",
+  "version": "1.0.0",
+  "description": "first backend project youtube clone",
+  "author": "Monu Ojha",
+  "license": "ISC",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/index.js  "
+  },
+  "keywords": [
+    "java",
+    "Script"
+  ],
+  "devDependencies": {
+    "nodemon": "^3.1.9",
+    "prettier": "^3.4.2"
+  }
+}
