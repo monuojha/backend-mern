@@ -4,6 +4,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import {ApiError} from "../utils/ApiError.js" 
 import {User} from "../modals/user.modals.js"
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshToken= async(uersId)=>{
      try {
@@ -239,5 +240,117 @@ const refreshAccessToken= asyncHandler(async(req, res)=>{
 
 })
 
+const getUserProfileDetails = asyncHandler(async(req, res)=>{
 
-export {registerUser, loginUser, loggedOut, refreshAccessToken}
+    const {username}= req.params
+
+    if (!username?.trim()){
+        throw new ApiError( 400, "username is missing")
+    }
+
+  const channel = await  User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase()
+            }
+        },
+       {
+
+        $lookup:{
+            from:"subscription",
+            localField:"_id",
+            foreignField:"channel",
+            as:"subscribers"
+        }
+       },
+       {
+        $lookup:{
+            from:"subscription",
+            localField:"_id",
+            foreignField:"subscriber",
+            as:"subscriberd"
+        }
+       },
+       {
+        $addFields:{
+            subcriberCount:{
+                size:"$subscribers"
+            },
+            channelSubcribedCount:{
+                size:"$subscriberd"
+            },
+            isSubscribed:{
+                $coud:{
+                    if:{$in:[req.user?._id, "$subscribers.subscriber"]},
+                    then:true,
+                    else:false
+                }
+            }
+        }
+       },
+
+       {
+        $project:{
+            fullName:1,
+            username:1,
+            email:1,
+            avatar:1,
+            coverImage:1,
+            subcriberCount:1,
+            channelSubcribedCount:1,
+            isSubscribed:1
+        }
+       }
+    ])
+
+    if(!channel?.length){
+        throw new ApiError( 400, "User details not comming")
+    }
+
+    return res.status(200)
+    .json(new ApiResponse( 200, channel[0], " user fetched data successfully" ) )
+})
+
+
+const getWatchHistory = asyncHandler(async(req, res)=>{
+
+    const user = await User.aggregate([
+        {
+            $match:{
+                _id:new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+
+        {
+            $lookup:{
+
+                from: "videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                pipeline:[
+                   { $project:{
+                        fullName:1,
+                        username:1,
+                        avatar:1
+
+                    }}
+                ]
+            }
+        },
+        {
+            $addFields:{
+                owner:{
+                    $first:"$owner"
+                }
+            }
+        }
+    ])
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user[0].watchHistory, "fetched user Watched History"))
+})
+
+
+export {registerUser, loginUser, loggedOut, refreshAccessToken, getUserProfileDetails,getWatchHistory}
